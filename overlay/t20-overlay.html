@@ -39,19 +39,19 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
 
-.slot {
+#t20-obs-overlay .slot {
   position: absolute;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
 }
-.slot .info { display: flex; flex-direction: column; box-sizing: border-box; }
+#t20-obs-overlay .slot .info { display: flex; flex-direction: column; box-sizing: border-box; }
 
 /* ---------- Faixa de status (ícone + barra) ---------- */
-.strip { display: flex; align-items: center; gap: 9px; }
-.grp { display: flex; align-items: center; min-width: 0; flex: 1 1 0; }
-.ico { flex: none; position: relative; z-index: 2; width: calc(var(--bh, 21px) + 7px); height: calc(var(--bh, 21px) + 7px); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
-.bar {
+#t20-obs-overlay .strip { display: flex; align-items: center; gap: 9px; }
+#t20-obs-overlay .grp { display: flex; align-items: center; min-width: 0; flex: 1 1 0; }
+#t20-obs-overlay .ico { flex: none; position: relative; z-index: 2; width: calc(var(--bh, 21px) + 7px); height: calc(var(--bh, 21px) + 7px); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
+#t20-obs-overlay .bar {
   position: relative;
   flex: 1;
   min-width: 0;
@@ -61,11 +61,11 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
   background: linear-gradient(90deg, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.45));
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
-.bar .fill { position: absolute; inset: 0 auto 0 0; opacity: 0.85; }
-.pv .fill { background: linear-gradient(90deg, #8e1212, #e0392f); }
-.pm .fill { background: linear-gradient(90deg, #1b3f96, #4a9be8); }
-.pv.low .fill { background: linear-gradient(90deg, #5e0707, #b81d16); }
-.bar .val {
+#t20-obs-overlay .bar .fill { position: absolute; inset: 0 auto 0 0; opacity: 0.85; }
+#t20-obs-overlay .pv .fill { background: linear-gradient(90deg, #8e1212, #e0392f); }
+#t20-obs-overlay .pm .fill { background: linear-gradient(90deg, #1b3f96, #4a9be8); }
+#t20-obs-overlay .pv.low .fill { background: linear-gradient(90deg, #5e0707, #b81d16); }
+#t20-obs-overlay .bar .val {
   position: absolute;
   inset: 0;
   display: flex;
@@ -77,28 +77,28 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
   white-space: nowrap;
   text-shadow: 0 0 3px #000, 0 1px 2px #000;
 }
-.bar .val i { font-style: normal; opacity: 0.7; margin: 0 2px; }
-.bar .val em { font-style: normal; color: #ffe27a; margin-left: 4px; }
-.def .bar { background: linear-gradient(90deg, rgba(0, 0, 0, 0.88), rgba(110, 110, 110, 0.55)); border-color: rgba(233, 201, 135, 0.35); }
+#t20-obs-overlay .bar .val i { font-style: normal; opacity: 0.7; margin: 0 2px; }
+#t20-obs-overlay .bar .val em { font-style: normal; color: #ffe27a; margin-left: 4px; }
+#t20-obs-overlay .def .bar { background: linear-gradient(90deg, rgba(0, 0, 0, 0.88), rgba(110, 110, 110, 0.55)); border-color: rgba(233, 201, 135, 0.35); }
 
 /* ---------- Animações das barras ---------- */
-.grp { position: relative; }
-.bar em:empty, .val em:empty { display: none; }
-.bar .ghost { position: absolute; inset: 0 auto 0 0; width: 0; }
-.bar .ghost.loss { background: linear-gradient(90deg, #ffd9b0, #fff3e0); }
-.pv .bar .ghost.gain { background: linear-gradient(90deg, #7fe88a, #c9ffcf); }
-.pm .bar .ghost.gain { background: linear-gradient(90deg, #8fd8ff, #d8f1ff); }
-.bar .fill { z-index: 1; }
-.bar .val { z-index: 2; }
+#t20-obs-overlay .grp { position: relative; }
+#t20-obs-overlay .bar em:empty, #t20-obs-overlay .val em:empty { display: none; }
+#t20-obs-overlay .bar .ghost { position: absolute; inset: 0 auto 0 0; width: 0; }
+#t20-obs-overlay .bar .ghost.loss { background: linear-gradient(90deg, #ffd9b0, #fff3e0); }
+#t20-obs-overlay .pv .bar .ghost.gain { background: linear-gradient(90deg, #7fe88a, #c9ffcf); }
+#t20-obs-overlay .pm .bar .ghost.gain { background: linear-gradient(90deg, #8fd8ff, #d8f1ff); }
+#t20-obs-overlay .bar .fill { z-index: 1; }
+#t20-obs-overlay .bar .val { z-index: 2; }
 
-.bar.hit { animation: t20-shake 0.4s ease-out, t20-hit 0.8s ease-out; }
-.pv .bar.heal { --glow: 90, 255, 120; animation: t20-heal 0.9s ease-out; }
-.pm .bar.heal { --glow: 120, 200, 255; animation: t20-heal 0.9s ease-out; }
-.grp.pv.low .fill { animation: t20-lowpulse 1.1s ease-in-out infinite; }
-.val.pop { animation: t20-pop 0.5s ease-out; }
-.slot.enter { animation: t20-in 0.5s ease-out both; }
+#t20-obs-overlay .bar.hit { animation: t20-shake 0.4s ease-out, t20-hit 0.8s ease-out; }
+#t20-obs-overlay .pv .bar.heal { --glow: 90, 255, 120; animation: t20-heal 0.9s ease-out; }
+#t20-obs-overlay .pm .bar.heal { --glow: 120, 200, 255; animation: t20-heal 0.9s ease-out; }
+#t20-obs-overlay .grp.pv.low .fill { animation: t20-lowpulse 1.1s ease-in-out infinite; }
+#t20-obs-overlay .val.pop { animation: t20-pop 0.5s ease-out; }
+#t20-obs-overlay .slot.enter { animation: t20-in 0.5s ease-out both; }
 
-.delta {
+#t20-obs-overlay .delta {
   position: absolute;
   right: 3px;
   top: -3px;
@@ -108,11 +108,11 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
   text-shadow: 0 0 4px #000, 0 1px 3px #000;
   animation: t20-float 1.5s ease-out forwards;
 }
-.delta.neg { color: #ff6b5e; }
-.delta.pos { color: #7dff8a; }
-.pm .delta.pos { color: #8fd8ff; }
-.tela1 .delta { font-size: 18px; }
-.tela2 .delta { font-size: 15px; }
+#t20-obs-overlay .delta.neg { color: #ff6b5e; }
+#t20-obs-overlay .delta.pos { color: #7dff8a; }
+#t20-obs-overlay .pm .delta.pos { color: #8fd8ff; }
+#t20-obs-overlay .tela1 .delta { font-size: 18px; }
+#t20-obs-overlay .tela2 .delta { font-size: 15px; }
 
 @keyframes t20-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(1px); } }
 @keyframes t20-hit { 0% { box-shadow: 0 0 0 0 rgba(255, 70, 50, 0.95), inset 0 0 14px rgba(255, 90, 70, 0.9); } 100% { box-shadow: 0 0 16px 5px rgba(255, 70, 50, 0), inset 0 0 0 rgba(255, 90, 70, 0); } }
@@ -123,7 +123,7 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 @keyframes t20-float { 0% { opacity: 0; transform: translateY(6px) scale(0.8); } 15% { opacity: 1; transform: translateY(-4px) scale(1.15); } 100% { opacity: 0; transform: translateY(-32px) scale(1); } }
 
 /* ---------- Nome (opcional) ---------- */
-.nm {
+#t20-obs-overlay .nm {
   margin-top: 5px;
   font-family: var(--font-name, var(--display));
   color: #fff;
@@ -134,19 +134,19 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 }
 
 /* ---------- TELA 1 — topo de cada painel do Séquito ---------- */
-.tela1 .slot { padding: 3px 1px 0 5px; }
-.bar { height: var(--bh, 21px); }
-.bar .val { font-size: var(--fs, 14px); }
-.bar .val, .delta { font-family: var(--font-num, "Signika", "Segoe UI", sans-serif); }
-.tela1 .nm { font-size: 24px; }
+#t20-obs-overlay .tela1 .slot { padding: 3px 1px 0 5px; }
+#t20-obs-overlay .bar { height: var(--bh, 21px); }
+#t20-obs-overlay .bar .val { font-size: var(--fs, 14px); }
+#t20-obs-overlay .bar .val, #t20-obs-overlay .delta { font-family: var(--font-num, "Signika", "Segoe UI", sans-serif); }
+#t20-obs-overlay .tela1 .nm { font-size: 24px; }
 
 /* ---------- TELA 2 — topo de cada câmera ---------- */
-.tela2 .slot { padding: 3px 3px 0 3px; }
-.tela2 .strip { gap: 6px; }
-.tela2 .bar { margin-left: -6px; }
-.tela2 .val i { margin: 0 1px; }
-.tela2 .val em { display: none; }
-.tela2 .nm { font-size: 17px; text-shadow: 0 1px 4px #000, 0 0 6px #000; }
+#t20-obs-overlay .tela2 .slot { padding: 3px 3px 0 3px; }
+#t20-obs-overlay .tela2 .strip { gap: 6px; }
+#t20-obs-overlay .tela2 .bar { margin-left: -6px; }
+#t20-obs-overlay .tela2 .val i { margin: 0 1px; }
+#t20-obs-overlay .tela2 .val em { display: none; }
+#t20-obs-overlay .tela2 .nm { font-size: 17px; text-shadow: 0 1px 4px #000, 0 0 6px #000; }
 
 /* ---------- Janela de configuração (GM) ---------- */
 /* A janela nunca passa da altura da tela; o conteúdo rola dentro dela */
@@ -204,7 +204,7 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 .t20obs-lay-field input[type="number"] { width: 54px; padding: 0 2px; }
 
 </style></head><body>
-<script>window.T20OBS_VERSION = "3.5.0";</script>
+<script>window.T20OBS_VERSION = "3.5.1";</script>
 <script>
 /* Renderização do overlay. Não depende do Foundry: recebe um "payload" simples
    ({ slots, showNames, scenes, scene }) e desenha. É usado tanto dentro do Foundry
