@@ -85,10 +85,10 @@ let animCount = 0; // quantas animações de perda/ganho já foram disparadas (a
 const pctOf = (s) => (s && s.max > 0 ? Math.max(0, Math.min(100, (s.value / s.max) * 100)) : 0);
 
 function groupHtml(cls, s, withBar) {
-  const max = withBar ? `<i>/</i><span class="max">${s.max}</span><em>${s.temp > 0 ? "+" + s.temp : ""}</em>` : "";
+  const max = withBar ? `<i>/</i><span class="max">${s.max}</span>` : "";
   const bars = withBar ? `<div class="ghost" style="width:${pctOf(s)}%"></div><div class="fill" style="width:${pctOf(s)}%"></div>` : "";
   const value = withBar ? s.value : s;
-  return `<div class="grp ${cls}${cls === "pv" && s.max > 0 && pctOf(s) <= 25 ? " low" : ""}">${ICONS[cls]}<div class="bar">${bars}<span class="val"><span class="cur">${value}</span>${max}</span></div></div>`;
+  return `<div class="grp ${cls}${cls === "pv" && s.max > 0 && pctOf(s) <= 25 ? " low" : ""}">${ICONS[cls]}${withBar ? `<b class="tmp"${s.temp > 0 ? "" : " hidden"}>${s.temp}</b>` : ""}<div class="bar">${bars}<span class="val"><span class="cur">${value}</span>${max}</span></div></div>`;
 }
 
 const applyGeo = (el, g) => {
@@ -209,12 +209,42 @@ function tween(el, to, ms = 650) {
   el._raf = requestAnimationFrame(step);
 }
 
-function floatDelta(grp, diff) {
+function floatDelta(grp, diff, cls = "") {
   const d = document.createElement("div");
-  d.className = `delta ${diff < 0 ? "neg" : "pos"}`;
+  d.className = `delta ${diff < 0 ? "neg" : "pos"} ${cls}`;
   d.textContent = diff < 0 ? `${diff}` : `+${diff}`;
   grp.appendChild(d);
   setTimeout(() => d.remove(), 1600);
+}
+
+/** Número temporário sobre o ícone. Ao perder: estilhaça (anel dourado + número treme e some). */
+function patchTemp(grp, from, to) {
+  const tmp = grp.querySelector(".tmp");
+  if (!tmp || from === to) return;
+  clearTimeout(tmp._t);
+  if (to > from) {
+    tmp.hidden = false;
+    tmp.textContent = to;
+    restart(tmp, "tgain");
+    floatDelta(grp, to - from, "tmpd");
+    return;
+  }
+  // perda: faísca/anel no ícone + número treme e se desfaz
+  animCount++;
+  floatDelta(grp, to - from, "tmpd");
+  const burst = document.createElement("span");
+  burst.className = "burst";
+  grp.appendChild(burst);
+  setTimeout(() => burst.remove(), 800);
+  if (to > 0) {
+    tmp.textContent = to;
+    restart(tmp, "tloss");
+  } else {
+    tmp.hidden = false;
+    tmp.textContent = from;
+    restart(tmp, "tbreak");
+    tmp._t = setTimeout(() => { tmp.hidden = true; }, 750);
+  }
 }
 
 /** Atualiza uma barra (PV/PM): rastro ao perder, "enchimento" ao ganhar, número que conta, balanço/brilho. */
@@ -246,7 +276,7 @@ function patchBar(grp, prev, next, isPv) {
   }
   tween(grp.querySelector(".cur"), next.value);
   grp.querySelector(".max").textContent = next.max;
-  grp.querySelector("em").textContent = next.temp > 0 ? `+${next.temp}` : "";
+  patchTemp(grp, prev.temp || 0, next.temp || 0);
   if (isPv) grp.classList.toggle("low", next.max > 0 && pNew <= 25);
 }
 

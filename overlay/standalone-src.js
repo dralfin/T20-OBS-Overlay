@@ -53,8 +53,8 @@
     forced = forced || "tela1";
     var names = ["Thanvaar", "Rurik", "Ssaarok", "Kael", "Lyra"];
     var mx = [[60, 30], [48, 12], [70, 20], [40, 40], [38, 34]];
-    var st = [[42, 18, 28], [30, 6, 25], [70, 20, 30], [31, 22, 24], [20, 30, 23]];
-    var steps = [[0, 0, 25], [0, 1, 26], [1, 0, 48], [0, 2, 29], [3, 1, 5], [0, 0, 8], [0, 0, 60], [2, 0, 40], [1, 1, 12], [4, 0, 5], [4, 0, 38], [0, 1, 2]];
+    var st = [[42, 18, 28, 5, 0], [30, 6, 25, 0, 4], [70, 20, 30, 0, 0], [31, 22, 24, 0, 0], [20, 30, 23, 0, 0]];
+    var steps = [[0, 0, 25], [0, 1, 26], [1, 0, 48], [0, 2, 29], [3, 1, 5], [0, 0, 8], [0, 0, 60], [2, 0, 40], [1, 1, 12], [4, 0, 5], [4, 0, 38], [0, 1, 2], [0, 3, 2], [0, 3, 0], [0, 3, 9], [0, 4, 6], [1, 4, 1], [1, 4, 0]];
     var n = 0;
     var tick = function () {
       if (n > 0) {
@@ -65,7 +65,7 @@
       last = {
         v: 1, scene: null, scenes: {}, showNames: params.has("nomes"),
         slots: st.map(function (a, i) {
-          return { name: names[i], pv: { value: a[0], max: mx[i][0], temp: 0 }, pm: { value: a[1], max: mx[i][1], temp: 0 }, defesa: a[2] };
+          return { name: names[i], pv: { value: a[0], max: mx[i][0], temp: a[3] }, pm: { value: a[1], max: mx[i][1], temp: a[4] }, defesa: a[2] };
         })
       };
       lastAt = Date.now();

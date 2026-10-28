@@ -64,6 +64,7 @@ As barras animam sozinhas quando o valor muda:
 - **Perda de PV/PM:** a barra cai rápido, um rastro claro mostra o que foi perdido e vai encolhendo, a barra pisca (e balança no PV) e o valor `-12` sobe flutuando.
 - **Ganho:** um brilho verde (azul no PM) avança na frente e a barra o alcança, com `+8` flutuando.
 - Os números **contam** até o novo valor; a Defesa dá um "pulso" quando muda.
+- **PV/PM temporário:** o número aparece sobre o coração/escudo azul. Ao ganhar, ele "estoura" na tela; ao perder, aparece um anel dourado no ícone, o número treme e se desfaz (e `-N` dourado sobe). No `?teste=1` há exemplos.
 - PV abaixo de 25% fica pulsando suavemente.
 - O reenvio periódico dos dados não dispara animação; só mudanças reais.
 
