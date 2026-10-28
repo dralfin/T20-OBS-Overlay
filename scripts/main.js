@@ -46,18 +46,30 @@ const scheduleRender = () => {
 /* =====================================================================
    Ponte Foundry (mestre) → OBS via obs-websocket — o OBS não precisa de login
    ===================================================================== */
+/** Quem envia: o usuário escolhido (se estiver online); senão o mestre ativo. */
+function isSender() {
+  const chosen = game.settings.get(MODULE_ID, "bridgeUser");
+  const cu = chosen ? game.users.get(chosen) : null;
+  if (cu?.active) return cu.isSelf;
+  const gm = game.users.activeGM;
+  return !gm || gm.isSelf;
+}
+
+function canBridge() {
+  const chosen = game.settings.get(MODULE_ID, "bridgeUser");
+  return game.user.isGM || (chosen && chosen === game.user.id);
+}
+
 function pushNow() {
   if (!bridge?.ready) return;
-  const active = game.users.activeGM;
-  if (active && !active.isSelf) return; // só o mestre ativo envia
+  if (!isSender()) return;
   bridge.emit(buildPayload(bridge.scene));
 }
 
 /* Fontes de arquivo: lê do Foundry, registra aqui (modo ?t20obs=) e envia ao OBS dentro dos dados */
 function pushFonts() {
   if (!bridge?.ready || !Object.keys(fontPayload).length) return;
-  const active = game.users.activeGM;
-  if (active && !active.isSelf) return;
+  if (!isSender()) return;
   bridge.emit({ v: 1, fonts: fontPayload }, FONT_EVENT_NAME);
 }
 
@@ -96,7 +108,7 @@ function restartBridge() {
   bridge = null;
   clearInterval(heartbeat);
   clearInterval(fontBeat);
-  if (!game.user.isGM || !game.settings.get(MODULE_ID, "obsEnabled")) return;
+  if (!canBridge() || !game.settings.get(MODULE_ID, "obsEnabled")) return;
   bridge = new ObsBridge({
     host: game.settings.get(MODULE_ID, "obsHost").trim() || "localhost",
     port: game.settings.get(MODULE_ID, "obsPort") || 4455,
@@ -174,6 +186,14 @@ Hooks.once("init", () => {
     type: Object,
     default: {},
     onChange: dataChanged
+  });
+
+  game.settings.register(MODULE_ID, "bridgeUser", {
+    scope: "world",
+    config: false,
+    type: String,
+    default: "",
+    onChange: restartBridge
   });
 
   game.settings.register(MODULE_ID, "slots", {

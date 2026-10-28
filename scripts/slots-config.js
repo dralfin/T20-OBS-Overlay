@@ -35,7 +35,18 @@ export class SlotsConfig extends ApplicationV2 {
       })
       .join("");
 
+    const bridge = game.settings.get(MODULE_ID, "bridgeUser");
+    const users = game.users.contents.filter((u) => !u.isGM);
+    const bridgeSel = `
+      <label class="t20obs-cfg-hint"><b>Quem envia os dados ao OBS</b>
+        <select data-bridge>
+          <option value="">Mestre (padrão)</option>
+          ${users.map((u) => `<option value="${u.id}" ${bridge === u.id ? "selected" : ""}>${esc(u.name)}</option>`).join("")}
+        </select>
+      </label>
+      <p class="t20obs-cfg-hint">O usuário escolhido precisa deixar o Foundry aberto, ligar "Enviar dados ao OBS" nas configurações dele e ter permissão de Observador nos personagens dos slots. Se ele estiver offline, o mestre assume.</p>`;
     return `
+      ${bridgeSel}
       <p class="t20obs-cfg-hint">
         Escolha o personagem de cada slot (1 a ${SLOT_COUNT}, na ordem da HUD). A mesma escolha vale para as
         duas telas.
@@ -73,6 +84,8 @@ export class SlotsConfig extends ApplicationV2 {
         actorId: this.element.querySelector(`select[data-slot="${i}"]`)?.value ?? ""
       });
     }
+    const bridge = this.element.querySelector("select[data-bridge]")?.value ?? "";
+    if (bridge !== game.settings.get(MODULE_ID, "bridgeUser")) await game.settings.set(MODULE_ID, "bridgeUser", bridge);
     await game.settings.set(MODULE_ID, "slots", slots);
     ui.notifications.info("T20 OBS Overlay: slots salvos.");
     this.close();

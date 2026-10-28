@@ -14,6 +14,7 @@ Módulo para **Foundry VTT v13** + sistema **Tormenta20**. Mostra **Vida (PV), M
 *Configurações → Configurar Módulos → T20 OBS Overlay*:
 
 - **Configurar personagens**: escolha o personagem de cada um dos 5 slots (1 e 2 = painéis de cima, 3, 4 e 5 = painéis de baixo; na tela 2 vão da esquerda para a direita). Há um botão que preenche com os personagens dos jogadores.
+- **Quem envia os dados ao OBS** (dentro de *Configurar personagens*): por padrão é o mestre, mas você pode escolher outro usuário (por exemplo, o jogador que roda o OBS na stream). Esse usuário abre o Foundry, liga *Enviar dados ao OBS* nas configurações dele e precisa ser **Observador** dos personagens dos slots (senão não lê PV/PM). Se ele estiver offline, o mestre assume.
 - **Cena(s) do OBS da Tela 1 / Tela 2**: nomes das cenas do OBS (ex.: `Séquito` e `Jogo`). Pode listar vários separados por vírgula; basta o nome da cena conter o texto, sem diferenciar maiúsculas nem acentos.
 - **Mostrar o nome do personagem**: opcional (desligado por padrão).
 - **Enviar dados ao OBS**: ligue (é uma opção só do seu navegador). Preencha endereço (`localhost` se o OBS roda no mesmo computador), porta (`4455`) e a senha do WebSocket, se houver.
