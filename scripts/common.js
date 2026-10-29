@@ -16,6 +16,19 @@ export function getSlots() {
 
 const num = (v) => Number(v ?? 0) || 0;
 
+/** Nomes de exibição das condições do Tormenta20 (os ids vêm sem acento e em minúsculas). */
+const T20_NOMES = {
+  abalado: "Abalado", agarrado: "Agarrado", alquebrado: "Alquebrado", apavorado: "Apavorado", atordoado: "Atordoado",
+  caido: "Caído", cego: "Cego", confuso: "Confuso", debilitado: "Debilitado", doente: "Doente", emchamas: "Em Chamas",
+  enfeiticado: "Enfeitiçado", enjoado: "Enjoado", enredado: "Enredado", lento: "Lento", fatigado: "Fatigado",
+  vulneravel: "Vulnerável", paralisado: "Paralisado", imovel: "Imóvel", ofuscado: "Ofuscado", fascinado: "Fascinado",
+  morto: "Morto", esmorecido: "Esmorecido", envenenado: "Envenenado", invisivel: "Invisível", pasmo: "Pasmo",
+  petrificado: "Petrificado", inconsciente: "Inconsciente", indefeso: "Indefeso", sangrando: "Sangrando",
+  sobrecarregado: "Sobrecarregado", surdo: "Surdo", surpreendido: "Surpreendido", desprevenido: "Desprevenido",
+  sustentando: "Sustentando"
+};
+const pretty = (n) => T20_NOMES[String(n).toLowerCase()] ?? n;
+
 /** Nomes dos efeitos/condições nativos ativos. Junta três fontes, porque o sistema pode usar qualquer uma:
  *  1) actor.statuses (ids das condições ativas, traduzidos pela lista CONFIG.statusEffects);
  *  2) efeitos ativos marcados como status (statuses / flags.core.statusId);
@@ -27,14 +40,14 @@ function activeEffects(actor) {
   const known = new Set([...byId.values()].map((n) => n.toLowerCase()));
   const out = [];
   const add = (n) => {
-    n = String(n ?? "").trim();
+    n = pretty(String(n ?? "").trim());
     if (n && !out.some((o) => o.toLowerCase() === n.toLowerCase())) out.push(n);
   };
   for (const id of actor?.statuses ?? []) add(byId.get(id) ?? id);
   for (const e of actor?.effects ?? []) {
     if (e.disabled || e.isSuppressed) continue;
     const name = String(e.name ?? e.label ?? "").trim();
-    const isStatus = e.statuses?.size > 0 || e.getFlag?.("core", "statusId") || known.has(name.toLowerCase());
+    const isStatus = e.statuses?.size > 0 || (e.statuses && [...e.statuses].length > 0) || T20_NOMES[name.toLowerCase()] || e.getFlag?.("core", "statusId") || known.has(name.toLowerCase());
     if (isStatus) add(name);
   }
   return out.slice(0, 6);

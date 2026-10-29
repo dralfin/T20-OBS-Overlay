@@ -296,6 +296,10 @@ Hooks.once("ready", () => {
   // Se o servidor do Foundry cair e voltar, recarrega sozinho
   if (urlMode()) game.socket?.io?.on("reconnect", () => setTimeout(() => window.location.reload(), 2500));
 
+  // diagnóstico no console: game.modules.get("t20-obs-overlay").api.buildPayload()
+  const mod = game.modules.get(MODULE_ID);
+  if (mod) mod.api = { buildPayload, version: mod.version };
+
   restartBridge();
   syncFonts();
   scheduleRender();
