@@ -2,7 +2,7 @@
   "id": "t20-obs-overlay",
   "title": "T20 OBS Overlay",
   "description": "Overlay de OBS para Tormenta20: Vida, Mana e Defesa de até 5 personagens em duas telas, enviadas pelo mestre ao OBS via obs-websocket (sem login no OBS).",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "authors": [{ "name": "Olho da Tormenta" }],
   "compatibility": { "minimum": "13", "verified": "13" },
   "relationships": {
@@ -12,6 +12,6 @@
   "styles": ["styles/overlay.css"],
   "url": "https://github.com/dralfin/T20-OBS-Overlay",
   "manifest": "https://github.com/dralfin/T20-OBS-Overlay/releases/latest/download/module.json",
-  "download": "https://github.com/dralfin/T20-OBS-Overlay/releases/download/v1.0.4/t20-obs-overlay.zip",
+  "download": "https://github.com/dralfin/T20-OBS-Overlay/releases/download/v1.0.5/t20-obs-overlay.zip",
   "socket": true
 }

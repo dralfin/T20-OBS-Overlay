@@ -16,13 +16,26 @@ export function getSlots() {
 
 const num = (v) => Number(v ?? 0) || 0;
 
-/** Nomes dos efeitos/condições nativos ativos (os que o sistema aplica como "status", ex.: Abalado). */
+/** Nomes dos efeitos/condições nativos ativos. Junta três fontes, porque o sistema pode usar qualquer uma:
+ *  1) actor.statuses (ids das condições ativas, traduzidos pela lista CONFIG.statusEffects);
+ *  2) efeitos ativos marcados como status (statuses / flags.core.statusId);
+ *  3) efeitos ativos cujo nome é o de uma condição da lista. */
 function activeEffects(actor) {
+  const list = CONFIG.statusEffects ?? [];
+  const label = (s) => String(game.i18n?.localize?.(s.name ?? s.label ?? "") || s.name || s.label || s.id || "").trim();
+  const byId = new Map(list.map((s) => [s.id, label(s)]));
+  const known = new Set([...byId.values()].map((n) => n.toLowerCase()));
   const out = [];
+  const add = (n) => {
+    n = String(n ?? "").trim();
+    if (n && !out.some((o) => o.toLowerCase() === n.toLowerCase())) out.push(n);
+  };
+  for (const id of actor?.statuses ?? []) add(byId.get(id) ?? id);
   for (const e of actor?.effects ?? []) {
-    if (e.disabled || e.isSuppressed || !(e.statuses?.size > 0)) continue;
-    const n = String(e.name ?? e.label ?? "").trim();
-    if (n && !out.includes(n)) out.push(n);
+    if (e.disabled || e.isSuppressed) continue;
+    const name = String(e.name ?? e.label ?? "").trim();
+    const isStatus = e.statuses?.size > 0 || e.getFlag?.("core", "statusId") || known.has(name.toLowerCase());
+    if (isStatus) add(name);
   }
   return out.slice(0, 6);
 }
