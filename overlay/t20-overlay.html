@@ -146,6 +146,17 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 @keyframes t20-tbreak { 0% { transform: translateY(-50%) scale(1.3); opacity: 1; filter: none; } 25% { transform: translateY(-50%) scale(1.5) rotate(-12deg); } 55% { transform: translateY(-85%) scale(1.1) rotate(14deg); opacity: .8; filter: blur(0.5px); } 100% { transform: translateY(-160%) scale(0.5) rotate(30deg); opacity: 0; filter: blur(2px); } }
 @keyframes t20-burst { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.4); opacity: 0; border-width: 0; } }
 
+/* ---------- Efeitos ativos (opcional): etiquetas com o nome ---------- */
+#t20-obs-overlay .fx { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+#t20-obs-overlay .fx:empty { display: none; }
+#t20-obs-overlay .tag {
+  padding: 1px 7px; border-radius: 9px; font-size: 13px; font-weight: 700; line-height: 1.25; white-space: nowrap;
+  color: #fff4e0; background: linear-gradient(180deg, rgba(120, 20, 20, 0.92), rgba(60, 0, 0, 0.92));
+  border: 1px solid rgba(255, 150, 120, 0.55); text-shadow: 0 1px 2px #000;
+}
+#t20-obs-overlay .tag.new { animation: t20-in 0.4s ease-out both; }
+#t20-obs-overlay .tela2 .tag, #t20-obs-overlay.tela2 .tag { font-size: 11px; padding: 0 5px; }
+
 /* ---------- Nome (opcional) ---------- */
 #t20-obs-overlay .nm {
   margin-top: 5px;
@@ -227,7 +238,7 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 .t20obs-lay-field input[type="number"] { width: 54px; padding: 0 2px; }
 
 </style></head><body>
-<script>window.T20OBS_VERSION = "3.6.0";</script>
+<script>window.T20OBS_VERSION = "3.7.0";</script>
 <script>
 /* Renderização do overlay. Não depende do Foundry: recebe um "payload" simples
    ({ slots, showNames, scenes, scene }) e desenha. É usado tanto dentro do Foundry
@@ -401,7 +412,9 @@ function applyFonts(stage, layout) {
   }
 }
 
-function buildSlot(s, g, showNames) {
+const fxHtml = (list) => (list ?? []).map((n) => `<span class="tag">${esc(n)}</span>`).join("");
+
+function buildSlot(s, g, showNames, showFx) {
   const el = document.createElement("div");
   el.style.cssText = `left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.h}px`;
   if (!s) {
@@ -410,6 +423,7 @@ function buildSlot(s, g, showNames) {
   }
   el.className = "slot enter";
   el.innerHTML = `<div class="strip">${groupHtml("pv", s.pv, true)}${groupHtml("pm", s.pm, true)}${groupHtml("def", s.defesa, false)}</div>
+    ${showFx ? `<div class="fx">${fxHtml(s.effects)}</div>` : ""}
     ${showNames ? `<div class="nm">${esc(s.name)}</div>` : ""}`;
   return el;
 }
@@ -520,6 +534,14 @@ function patchSlot(el, prev, next) {
     grps[2].querySelector(".cur").textContent = next.defesa;
     restart(val, "pop");
   }
+  const fx = el.querySelector(".fx");
+  const list = next.effects ?? [];
+  if (fx && fx.dataset.k !== list.join("|")) {
+    const old = (fx.dataset.k ?? "").split("|");
+    fx.dataset.k = list.join("|");
+    fx.innerHTML = fxHtml(list);
+    fx.querySelectorAll(".tag").forEach((tag) => { if (!old.includes(tag.textContent)) tag.classList.add("new"); });
+  }
   const nm = el.querySelector(".nm");
   if (nm && nm.textContent !== next.name) nm.textContent = next.name;
 }
@@ -570,23 +592,26 @@ function createOverlay() {
         return;
       }
       const showNames = !!payload.showNames;
+      const showFx = !!payload.showEffects;
+      const mode = `${showNames}|${showFx}`;
       const slots = GEOMETRY[screen].map((_, i) => payload.slots?.[i] ?? null);
       const es = elemsFor(screen, payload.layout);
       applyFonts(stage, payload.layout);
 
-      if (curScreen !== screen || curNames !== showNames) {
+      if (curScreen !== screen || curNames !== mode) {
         // tela nova (ou nomes ligados/desligados): monta tudo, com animação de entrada
         stage.className = `t20obs-stage ${screen}`;
         stage.innerHTML = "";
-        els = GEOMETRY[screen].map((_, i) => stage.appendChild(buildSlot(slots[i], slotGeo(screen, i, payload.layout), showNames)));
+        els = GEOMETRY[screen].map((_, i) => stage.appendChild(buildSlot(slots[i], slotGeo(screen, i, payload.layout), showNames, showFx)));
         els.forEach((el) => applyElems(el, es));
         curScreen = screen;
-        curNames = showNames;
+        curNames = mode;
+        els.forEach((el, i) => { const fx = el.querySelector(".fx"); if (fx) fx.dataset.k = (slots[i]?.effects ?? []).join("|"); });
       } else {
         // mesma tela: atualiza no lugar (é o que permite animar as mudanças)
         slots.forEach((s, i) => {
           if (!!s !== !!prev[i]) {
-            const fresh = buildSlot(s, slotGeo(screen, i, payload.layout), showNames);
+            const fresh = buildSlot(s, slotGeo(screen, i, payload.layout), showNames, showFx);
             stage.replaceChild(fresh, els[i]);
             applyElems(fresh, es);
             els[i] = fresh;
@@ -680,9 +705,9 @@ function createOverlay() {
       }
       n++;
       last = {
-        v: 1, scene: null, scenes: {}, showNames: params.has("nomes"),
+        v: 1, scene: null, scenes: {}, showNames: params.has("nomes"), showEffects: params.has("efeitos"),
         slots: st.map(function (a, i) {
-          return { name: names[i], pv: { value: a[0], max: mx[i][0], temp: a[3] }, pm: { value: a[1], max: mx[i][1], temp: a[4] }, defesa: a[2] };
+          return { name: names[i], pv: { value: a[0], max: mx[i][0], temp: a[3] }, pm: { value: a[1], max: mx[i][1], temp: a[4] }, defesa: a[2], effects: i === 0 ? (n % 4 < 2 ? ["Abalado", "Em Chamas"] : ["Abalado"]) : i === 1 ? ["Atordoado"] : [] };
         })
       };
       lastAt = Date.now();

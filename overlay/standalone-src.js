@@ -63,9 +63,9 @@
       }
       n++;
       last = {
-        v: 1, scene: null, scenes: {}, showNames: params.has("nomes"),
+        v: 1, scene: null, scenes: {}, showNames: params.has("nomes"), showEffects: params.has("efeitos"),
         slots: st.map(function (a, i) {
-          return { name: names[i], pv: { value: a[0], max: mx[i][0], temp: a[3] }, pm: { value: a[1], max: mx[i][1], temp: a[4] }, defesa: a[2] };
+          return { name: names[i], pv: { value: a[0], max: mx[i][0], temp: a[3] }, pm: { value: a[1], max: mx[i][1], temp: a[4] }, defesa: a[2], effects: i === 0 ? (n % 4 < 2 ? ["Abalado", "Em Chamas"] : ["Abalado"]) : i === 1 ? ["Atordoado"] : [] };
         })
       };
       lastAt = Date.now();

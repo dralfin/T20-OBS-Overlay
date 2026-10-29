@@ -180,6 +180,16 @@ Hooks.once("init", () => {
     onChange: dataChanged
   });
 
+  game.settings.register(MODULE_ID, "showEffects", {
+    name: "Mostrar efeitos ativos (condições)",
+    hint: "Mostra uma etiqueta com o nome de cada condição/efeito nativo do Tormenta20 ativo no personagem (ex.: Abalado, Atordoado), logo abaixo da faixa. Desligado por padrão.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: dataChanged
+  });
+
   game.settings.register(MODULE_ID, "layout", {
     scope: "world",
     config: false,
@@ -292,4 +302,23 @@ Hooks.once("ready", () => {
 });
 
 /* ---------- Atualização em tempo real ---------- */
-for (const h of ["updateActor", "createItem", "updateItem", "deleteItem"]) Hooks.on(h, onData);
+for (const h of ["updateActor", "createItem", "updateItem", "deleteItem", "createActiveEffect", "updateActiveEffect", "deleteActiveEffect", "updateToken"]) {
+  // lê de novo logo depois: valores derivados (como a Defesa) só ficam prontos após o sistema recalcular
+  Hooks.on(h, () => {
+    onData();
+    setTimeout(onData, 400);
+  });
+}
+
+/* Rede de segurança: a cada 1 s compara os números e reenvia se algo mudou por um caminho sem hook
+   (Defesa recalculada por efeito, item equipado, etc.) */
+let lastSig = "";
+setInterval(() => {
+  try {
+    if (!game.ready) return;
+    const sig = JSON.stringify(buildPayload(null).slots);
+    if (sig === lastSig) return;
+    lastSig = sig;
+    onData();
+  } catch (err) { /* ignora */ }
+}, 1000);

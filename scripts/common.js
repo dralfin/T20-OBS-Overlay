@@ -16,6 +16,17 @@ export function getSlots() {
 
 const num = (v) => Number(v ?? 0) || 0;
 
+/** Nomes dos efeitos/condições nativos ativos (os que o sistema aplica como "status", ex.: Abalado). */
+function activeEffects(actor) {
+  const out = [];
+  for (const e of actor?.effects ?? []) {
+    if (e.disabled || e.isSuppressed || !(e.statuses?.size > 0)) continue;
+    const n = String(e.name ?? e.label ?? "").trim();
+    if (n && !out.includes(n)) out.push(n);
+  }
+  return out.slice(0, 6);
+}
+
 /** Lê PV, PM e Defesa do ator (sistema Tormenta20). */
 export function readStats(actor) {
   const a = actor?.system?.attributes ?? {};
@@ -24,7 +35,8 @@ export function readStats(actor) {
     name: actor?.name ?? "—",
     pv: { value: num(a.pv?.value), max: num(a.pv?.max), temp: num(a.pv?.temp) },
     pm: { value: num(a.pm?.value), max: num(a.pm?.max), temp: num(a.pm?.temp) },
-    defesa: num(typeof def === "object" ? def?.value : def)
+    defesa: num(typeof def === "object" ? def?.value : def),
+    effects: activeEffects(actor)
   };
 }
 
@@ -45,6 +57,7 @@ export function buildPayload(obsScene = null) {
       scene2: game.settings.get(MODULE_ID, "scene2")
     },
     showNames: game.settings.get(MODULE_ID, "showNames"),
+    showEffects: game.settings.get(MODULE_ID, "showEffects"),
     layout: getLayout(),
     slots: getSlots().map((s) => {
       const actor = s.actorId ? game.actors.get(s.actorId) : null;

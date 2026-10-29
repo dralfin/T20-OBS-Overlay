@@ -170,7 +170,9 @@ function applyFonts(stage, layout) {
   }
 }
 
-function buildSlot(s, g, showNames) {
+const fxHtml = (list) => (list ?? []).map((n) => `<span class="tag">${esc(n)}</span>`).join("");
+
+function buildSlot(s, g, showNames, showFx) {
   const el = document.createElement("div");
   el.style.cssText = `left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.h}px`;
   if (!s) {
@@ -179,6 +181,7 @@ function buildSlot(s, g, showNames) {
   }
   el.className = "slot enter";
   el.innerHTML = `<div class="strip">${groupHtml("pv", s.pv, true)}${groupHtml("pm", s.pm, true)}${groupHtml("def", s.defesa, false)}</div>
+    ${showFx ? `<div class="fx">${fxHtml(s.effects)}</div>` : ""}
     ${showNames ? `<div class="nm">${esc(s.name)}</div>` : ""}`;
   return el;
 }
@@ -289,6 +292,14 @@ function patchSlot(el, prev, next) {
     grps[2].querySelector(".cur").textContent = next.defesa;
     restart(val, "pop");
   }
+  const fx = el.querySelector(".fx");
+  const list = next.effects ?? [];
+  if (fx && fx.dataset.k !== list.join("|")) {
+    const old = (fx.dataset.k ?? "").split("|");
+    fx.dataset.k = list.join("|");
+    fx.innerHTML = fxHtml(list);
+    fx.querySelectorAll(".tag").forEach((tag) => { if (!old.includes(tag.textContent)) tag.classList.add("new"); });
+  }
   const nm = el.querySelector(".nm");
   if (nm && nm.textContent !== next.name) nm.textContent = next.name;
 }
@@ -339,23 +350,26 @@ export function createOverlay() {
         return;
       }
       const showNames = !!payload.showNames;
+      const showFx = !!payload.showEffects;
+      const mode = `${showNames}|${showFx}`;
       const slots = GEOMETRY[screen].map((_, i) => payload.slots?.[i] ?? null);
       const es = elemsFor(screen, payload.layout);
       applyFonts(stage, payload.layout);
 
-      if (curScreen !== screen || curNames !== showNames) {
+      if (curScreen !== screen || curNames !== mode) {
         // tela nova (ou nomes ligados/desligados): monta tudo, com animação de entrada
         stage.className = `t20obs-stage ${screen}`;
         stage.innerHTML = "";
-        els = GEOMETRY[screen].map((_, i) => stage.appendChild(buildSlot(slots[i], slotGeo(screen, i, payload.layout), showNames)));
+        els = GEOMETRY[screen].map((_, i) => stage.appendChild(buildSlot(slots[i], slotGeo(screen, i, payload.layout), showNames, showFx)));
         els.forEach((el) => applyElems(el, es));
         curScreen = screen;
-        curNames = showNames;
+        curNames = mode;
+        els.forEach((el, i) => { const fx = el.querySelector(".fx"); if (fx) fx.dataset.k = (slots[i]?.effects ?? []).join("|"); });
       } else {
         // mesma tela: atualiza no lugar (é o que permite animar as mudanças)
         slots.forEach((s, i) => {
           if (!!s !== !!prev[i]) {
-            const fresh = buildSlot(s, slotGeo(screen, i, payload.layout), showNames);
+            const fresh = buildSlot(s, slotGeo(screen, i, payload.layout), showNames, showFx);
             stage.replaceChild(fresh, els[i]);
             applyElems(fresh, es);
             els[i] = fresh;
