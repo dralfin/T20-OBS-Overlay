@@ -6,7 +6,7 @@
   var STALE_MS = 60000; // sem dados do Foundry por 1 min → esconde (evita mostrar números velhos)
 
   var params = new URLSearchParams(window.location.search);
-  var forcedMap = { 1: "tela1", tela1: "tela1", 2: "tela2", tela2: "tela2" }[(params.get("tela") || "").toLowerCase()];
+  var forcedMap = { 1: "tela1", tela1: "tela1", 2: "tela2", tela2: "tela2", 3: "chat", chat: "chat" }[(params.get("tela") || "").toLowerCase()];
   var forced = forcedMap || null;
   var debug = params.has("debug");
 
@@ -27,11 +27,15 @@
     var fresh = last && Date.now() - lastAt < STALE_MS;
     var scene = (last && last.scene) || obsScene;
     var screen = forced || (last ? screenForScene(scene, last.scenes) : "off");
-    overlay.show(fresh && screen !== "off" ? screen : null, last);
+    if (last && last.chat && last.chat.frame && frameStore && frameStore.css) {
+      last.chat.frame.cssText = frameStore.css;
+      last.chat.frame.base = frameStore.base || last.chat.frame.base;
+    }
+    overlay.show(fresh && screen !== "off" ? screen : null, last && forced === "chat" ? Object.assign({}, last, { fill: true }) : last);
     if (dbg) {
       dbg.textContent = !last
         ? "v" + (window.T20OBS_VERSION || "?") + " · aguardando dados do Foundry… (cena OBS: " + (scene || "?") + ")"
-        : "v" + (window.T20OBS_VERSION || "?") + " · dados há " + Math.round((Date.now() - lastAt) / 1000) + "s · cena: " + (scene || "?") + " · tela: " + screen + " · animações disparadas: " + animCount;
+        : "v" + (window.T20OBS_VERSION || "?") + " · dados há " + Math.round((Date.now() - lastAt) / 1000) + "s · cena: " + (scene || "?") + " · tela: " + screen + " · animações disparadas: " + animCount + " · efeitos: " + (last.showEffects ? "ligado" : "DESLIGADO") + " (" + last.slots.reduce(function (n, s) { return n + (s && s.effects ? s.effects.length : 0); }, 0) + " recebidos)";
     }
   }
 
@@ -64,6 +68,7 @@
       n++;
       last = {
         v: 1, scene: null, scenes: {}, showNames: params.has("nomes"), showEffects: params.has("efeitos"),
+        chat: params.has("chat") ? { style: params.get("chat") === "foundry" ? "foundry" : "simple", h: 300, frame: { base: "", css: [], htmlClass: "", bodyClass: "theme-dark" }, screens: "both", x: 20, y: 1040, w: 440, fs: 18, fade: 12, msgs: [{ id: "a", ts: Date.now() - 3000, html: '<li class="chat-message message"><header class="message-header"><h4 class="message-sender">Rurik</h4></header><div class="message-content" style="color:#fff;background:#222;padding:4px">Vou abrir a porta com cuidado.</div></li>', who: "Rurik", text: "Vou abrir a porta com cuidado.", flavor: "", roll: null }, { id: "b" + Math.floor(n / 2), ts: Date.now(), who: "Thanvaar", text: "", flavor: "Ataque (Raio Arcano)", roll: { formula: "1d20+7", total: 10 + n } }] } : null,
         slots: st.map(function (a, i) {
           return { name: names[i], pv: { value: a[0], max: mx[i][0], temp: a[3] }, pm: { value: a[1], max: mx[i][1], temp: a[4] }, defesa: a[2], effects: i === 0 ? (n % 4 < 2 ? ["Abalado", "Em Chamas"] : ["Abalado"]) : i === 1 ? ["Atordoado"] : [] };
         })
@@ -97,6 +102,18 @@
     var d = e.detail;
     if (d && d.fonts) applyFonts(d.fonts, true);
   });
+
+  /* Visual do Foundry (CSS) para o chat: guardado aqui e reaplicado a cada desenho */
+  var frameStore = null;
+  try { frameStore = JSON.parse(localStorage.getItem("t20obs-frame") || "null"); } catch (e) { /* sem cache */ }
+  window.addEventListener("t20obs-frame", function (e) {
+    var d = e.detail;
+    if (!d || !d.css) return;
+    frameStore = d;
+    try { localStorage.setItem("t20obs-frame", JSON.stringify(d)); } catch (err) { /* cota cheia */ }
+    draw();
+  });
+  window.__t20frame = function () { return frameStore; };
 
   setInterval(draw, 2000);
 })();

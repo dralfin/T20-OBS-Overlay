@@ -59,6 +59,7 @@ export function obsAuth(password, salt, challenge) {
 
 export const EVENT_NAME = "t20obs-data";
 export const FONT_EVENT_NAME = "t20obs-fonts";
+export const FRAME_EVENT_NAME = "t20obs-frame";
 
 export class ObsBridge {
   #ws = null;

@@ -45,8 +45,18 @@ export class SlotsConfig extends ApplicationV2 {
         </select>
       </label>
       <p class="t20obs-cfg-hint">O usuário escolhido precisa deixar o Foundry aberto, ligar "Enviar dados ao OBS" nas configurações dele e ter permissão de Observador nos personagens dos slots. Se ele estiver offline, o mestre assume.</p>`;
+    const autoUser = game.settings.get(MODULE_ID, "chatAutoUser");
+    const autoSel = `
+      <label class="t20obs-cfg-hint"><b>Abrir a janela do chat automaticamente para</b>
+        <select data-chatauto>
+          <option value="">Ninguém</option>
+          ${game.users.contents.map((u) => `<option value="${u.id}" ${autoUser === u.id ? "selected" : ""}>${esc(u.name)}</option>`).join("")}
+        </select>
+      </label>
+      <p class="t20obs-cfg-hint">Quando esse usuário entrar no Foundry, a cópia do chat abre sozinha em outra janela do navegador. Se o navegador bloquear pop-ups, ela abre no primeiro clique dele (ou permita pop-ups para o site).</p>`;
     return `
       ${bridgeSel}
+      ${autoSel}
       <p class="t20obs-cfg-hint">
         Escolha o personagem de cada slot (1 a ${SLOT_COUNT}, na ordem da HUD). A mesma escolha vale para as
         duas telas.
@@ -86,6 +96,8 @@ export class SlotsConfig extends ApplicationV2 {
     }
     const bridge = this.element.querySelector("select[data-bridge]")?.value ?? "";
     if (bridge !== game.settings.get(MODULE_ID, "bridgeUser")) await game.settings.set(MODULE_ID, "bridgeUser", bridge);
+    const auto = this.element.querySelector("select[data-chatauto]")?.value ?? "";
+    if (auto !== game.settings.get(MODULE_ID, "chatAutoUser")) await game.settings.set(MODULE_ID, "chatAutoUser", auto);
     await game.settings.set(MODULE_ID, "slots", slots);
     ui.notifications.info("T20 OBS Overlay: slots salvos.");
     this.close();

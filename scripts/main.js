@@ -1,8 +1,9 @@
-import { MODULE_ID, buildPayload, getLayout, loadFontFile } from "./common.js";
+import { MODULE_ID, buildPayload, getLayout, loadFontFile, primeChatHtml, collectFrameCss, frameBase } from "./common.js";
 import { createOverlay, screenForScene, registerFontData } from "./render.js";
-import { ObsBridge, FONT_EVENT_NAME } from "./obs-bridge.js";
+import { ObsBridge, FONT_EVENT_NAME, FRAME_EVENT_NAME } from "./obs-bridge.js";
 import { SlotsConfig } from "./slots-config.js";
 import { LayoutConfig } from "./layout-config.js";
+import { ChatCopy, OpenChatCopy, openChatCopy, autoOpenChat } from "./chat-copy.js";
 
 const overlay = createOverlay();
 let obsScene = null; // cena ativa no OBS, quando o próprio Foundry roda dentro do OBS (modo ?t20obs=)
@@ -19,7 +20,7 @@ let pushTimer = 0;
    ===================================================================== */
 function urlMode() {
   const p = new URLSearchParams(window.location.search).get("t20obs")?.toLowerCase();
-  const map = { 1: "tela1", tela1: "tela1", 2: "tela2", tela2: "tela2", auto: "auto" };
+  const map = { 1: "tela1", tela1: "tela1", 2: "tela2", tela2: "tela2", 3: "chat", chat: "chat", auto: "auto" };
   return map[p] ?? null;
 }
 
@@ -95,6 +96,15 @@ async function syncFonts() {
   scheduleRender();
 }
 
+/* Visual (CSS) do Foundry para o chat "do jeito do Foundry": enviado ao OBS, que o guarda */
+let frameCss = "";
+function pushFrame() {
+  if (!bridge?.ready || !isSender()) return;
+  if (!game.settings.get(MODULE_ID, "showChat") || game.settings.get(MODULE_ID, "chatStyle") !== "foundry") return;
+  if (!frameCss) frameCss = collectFrameCss();
+  if (frameCss) bridge.emit({ v: 1, ...frameBase(), css: frameCss, n: frameCss.length }, FRAME_EVENT_NAME);
+}
+
 function schedulePush() {
   if (!bridge?.ready || pushTimer) return;
   pushTimer = setTimeout(() => {
@@ -117,12 +127,16 @@ function restartBridge() {
     onReady: () => {
       pushNow();
       pushFonts();
+      pushFrame();
     },
     onScene: pushNow
   });
   bridge.start();
   heartbeat = setInterval(pushNow, 5000); // páginas recém-abertas no OBS recebem os dados em até 5 s
-  fontBeat = setInterval(pushFonts, 30000); // fontes de arquivo: reenvio raro (o overlay também guarda uma cópia)
+  fontBeat = setInterval(() => {
+    pushFonts();
+    pushFrame();
+  }, 30000); // fontes de arquivo: reenvio raro (o overlay também guarda uma cópia)
 }
 
 /* Qualquer mudança nos dados: redesenha (se o overlay estiver ligado aqui) e envia ao OBS */
@@ -134,6 +148,9 @@ function onData() {
 /* ---------- Configurações ---------- */
 Hooks.once("init", () => {
   const dataChanged = () => {
+    primeChatHtml().then((ch) => ch && schedulePush());
+    frameCss = "";
+    setTimeout(pushFrame, 300);
     scheduleRender();
     schedulePush();
     syncFonts();
@@ -146,7 +163,7 @@ Hooks.once("init", () => {
     config: true,
     type: String,
     default: "off",
-    choices: { off: "Desligado (Foundry normal)", tela1: "Tela 1 — Séquito (painéis dos personagens)", tela2: "Tela 2 — Câmeras (faixa no topo de cada câmera)" },
+    choices: { off: "Desligado (Foundry normal)", chat: "Tela do Chat (só o chat)", tela1: "Tela 1 — Séquito (painéis dos personagens)", tela2: "Tela 2 — Câmeras (faixa no topo de cada câmera)" },
     onChange: scheduleRender
   });
 
@@ -163,6 +180,16 @@ Hooks.once("init", () => {
   game.settings.register(MODULE_ID, "scene2", {
     name: "Cena(s) do OBS da Tela 2",
     hint: "Nome da cena do OBS em que a Tela 2 (câmeras) aparece. Em qualquer outra cena o overlay fica vazio.",
+    scope: "world",
+    config: true,
+    type: String,
+    default: "",
+    onChange: dataChanged
+  });
+
+  game.settings.register(MODULE_ID, "scene3", {
+    name: "Cena(s) do OBS da Tela do Chat",
+    hint: "Nome da cena do OBS que mostra só o chat (sem os personagens). Exige \"Chat no OBS: mostrar\" ligado. Vários nomes separados por vírgula.",
     scope: "world",
     config: true,
     type: String,
@@ -189,6 +216,28 @@ Hooks.once("init", () => {
     default: false,
     onChange: dataChanged
   });
+
+  /* Chat no OBS */
+  const chatOpt = (key, name, type, def, extra = {}) =>
+    game.settings.register(MODULE_ID, key, { name, scope: "world", config: true, type, default: def, onChange: dataChanged, ...extra });
+  chatOpt("showChat", "Chat no OBS: mostrar", Boolean, false, { hint: "Mostra no overlay as mensagens públicas do chat do Foundry (falas e rolagens). Sussurros e rolagens cegas nunca são enviados." });
+  chatOpt("chatStyle", "Chat no OBS: aparência", String, "foundry", {
+    choices: { foundry: "Do jeito do Foundry (recorte fiel, usa o visual do próprio Foundry)", simple: "Simples (caixas escuras leves)" },
+    hint: "No modo Foundry o OBS precisa alcançar o endereço do Foundry (ele baixa o visual de lá, sem login). Mensagens longas aumentam o volume de dados enviados."
+  });
+  chatOpt("chatH", "Chat no OBS: altura da caixa (px, modo Foundry)", Number, 420);
+  chatOpt("chatRollsOnly", "Chat no OBS: só rolagens de dados", Boolean, false);
+  chatOpt("chatScreens", "Chat no OBS: em quais telas", String, "both", { choices: { both: "Tela 1 e Tela 2", tela1: "Só Tela 1", tela2: "Só Tela 2", none: "Nenhuma delas (só na Tela do Chat)" } });
+  chatOpt("chatLines", "Chat no OBS: quantas mensagens", Number, 6, { hint: "De 1 a 15." });
+  chatOpt("chatFade", "Chat no OBS: some após (segundos)", Number, 25, { hint: "0 = nunca some (fica só as últimas mensagens)." });
+  chatOpt("chatScrX", "Tela do Chat: posição X (px)", Number, 40);
+  chatOpt("chatScrY", "Tela do Chat: posição Y da borda de baixo (px)", Number, 1040);
+  chatOpt("chatScrW", "Tela do Chat: largura (px)", Number, 760);
+  chatOpt("chatScrH", "Tela do Chat: altura (px, modo Foundry)", Number, 1000);
+  chatOpt("chatX", "Chat no OBS: posição X (px, tela 1920×1080)", Number, 20);
+  chatOpt("chatY", "Chat no OBS: posição Y da borda de baixo (px)", Number, 1040);
+  chatOpt("chatW", "Chat no OBS: largura (px)", Number, 440);
+  chatOpt("chatFs", "Chat no OBS: tamanho da fonte (px)", Number, 18);
 
   game.settings.register(MODULE_ID, "layout", {
     scope: "world",
@@ -251,6 +300,41 @@ Hooks.once("init", () => {
     onChange: restartBridge
   });
 
+  game.settings.register(MODULE_ID, "chatAutoUser", {
+    scope: "world",
+    config: false,
+    type: String,
+    default: "",
+    onChange: () => autoOpenChat()
+  });
+
+  game.settings.register(MODULE_ID, "chatCopyLines", {
+    name: "Chat em janela: quantas mensagens",
+    hint: "Quantas mensagens recentes a janela de cópia do chat mostra (5 a 300). Vale só para este navegador.",
+    scope: "client",
+    config: true,
+    type: Number,
+    default: 60
+  });
+
+  game.settings.registerMenu(MODULE_ID, "chatCopyMenu", {
+    name: "Chat em janela",
+    label: "Abrir cópia do chat",
+    hint: "Abre uma janela com uma cópia do seu chat (só o que você pode ver), com o visual do Foundry. Dá para redimensionar e capturar no OBS. Atalho: Ctrl+Shift+C.",
+    icon: "fa-solid fa-comments",
+    type: OpenChatCopy,
+    restricted: false
+  });
+
+  game.keybindings.register(MODULE_ID, "chatCopy", {
+    name: "Abrir cópia do chat em janela",
+    editable: [{ key: "KeyC", modifiers: ["Control", "Shift"] }],
+    onDown: () => {
+      openChatCopy();
+      return true;
+    }
+  });
+
   game.settings.registerMenu(MODULE_ID, "layoutMenu", {
     name: "Posição e largura",
     label: "Ajustar posição e largura",
@@ -273,7 +357,7 @@ Hooks.once("init", () => {
     name: "Alternar overlay de teste (desligado → tela 1 → tela 2)",
     editable: [{ key: "KeyO", modifiers: ["Control", "Shift"] }],
     onDown: () => {
-      const order = ["off", "tela1", "tela2"];
+      const order = ["off", "tela1", "tela2", "chat"];
       const cur = game.settings.get(MODULE_ID, "screen");
       game.settings.set(MODULE_ID, "screen", order[(order.indexOf(cur) + 1) % order.length]);
       return true;
@@ -298,21 +382,35 @@ Hooks.once("ready", () => {
 
   // diagnóstico no console: game.modules.get("t20-obs-overlay").api.buildPayload()
   const mod = game.modules.get(MODULE_ID);
-  if (mod) mod.api = { buildPayload, version: mod.version };
+  if (mod) mod.api = { buildPayload, version: mod.version, openChat: openChatCopy };
 
   restartBridge();
   syncFonts();
+  rePrime();
+  setTimeout(autoOpenChat, 1500); // jogador escolhido pelo mestre: abre a janela do chat ao entrar
   scheduleRender();
 });
 
 /* ---------- Atualização em tempo real ---------- */
-for (const h of ["updateActor", "createItem", "updateItem", "deleteItem", "createActiveEffect", "updateActiveEffect", "deleteActiveEffect", "updateToken"]) {
+for (const h of ["updateActor", "createItem", "updateItem", "deleteItem", "createActiveEffect", "updateActiveEffect", "deleteActiveEffect", "updateToken", "createChatMessage", "updateChatMessage", "deleteChatMessage"]) {
   // lê de novo logo depois: valores derivados (como a Defesa) só ficam prontos após o sistema recalcular
-  Hooks.on(h, () => {
+  Hooks.on(h, (doc) => {
     onData();
     setTimeout(onData, 400);
   });
 }
+
+// Chat do jeito do Foundry: renderiza o HTML da mensagem (assíncrono) e só então envia
+const rePrime = (id) => primeChatHtml(id).then((ch) => ch && onData());
+Hooks.on("createChatMessage", () => {
+  setTimeout(() => rePrime(), 150);
+  ChatCopy.refresh();
+});
+Hooks.on("updateChatMessage", (m) => {
+  rePrime(m.id);
+  ChatCopy.refresh(m.id);
+});
+Hooks.on("deleteChatMessage", (m) => ChatCopy.refresh(m.id));
 
 /* Rede de segurança: a cada 1 s compara os números e reenvia se algo mudou por um caminho sem hook
    (Defesa recalculada por efeito, item equipado, etc.) */

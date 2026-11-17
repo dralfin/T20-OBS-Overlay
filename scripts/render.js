@@ -74,7 +74,7 @@ const norm = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toL
 export function screenForScene(name, scenes = {}) {
   const n = norm(name);
   if (!n) return "off";
-  for (const [screen, key] of [["tela1", "scene1"], ["tela2", "scene2"]]) {
+  for (const [screen, key] of [["tela1", "scene1"], ["tela2", "scene2"], ["chat", "scene3"]]) {
     const names = String(scenes?.[key] ?? "").split(",").map(norm).filter(Boolean);
     if (names.some((w) => n === w || n.includes(w))) return screen;
   }
@@ -180,7 +180,7 @@ function buildSlot(s, g, showNames, showFx) {
     return el;
   }
   el.className = "slot enter";
-  el.innerHTML = `<div class="strip">${groupHtml("pv", s.pv, true)}${groupHtml("pm", s.pm, true)}${groupHtml("def", s.defesa, false)}</div>
+  el.innerHTML = `<div class="strip">${groupHtml("pv", s.pv, true)}${groupHtml("pm", s.pm, true).replace('class="grp pm', s.hasPm === false ? 'class="grp off pm' : 'class="grp pm')}${groupHtml("def", s.defesa, false)}</div>
     ${showFx ? `<div class="fx">${fxHtml(s.effects)}</div>` : ""}
     ${showNames ? `<div class="nm">${esc(s.name)}</div>` : ""}`;
   return el;
@@ -286,6 +286,7 @@ function patchBar(grp, prev, next, isPv) {
 function patchSlot(el, prev, next) {
   const grps = el.querySelectorAll(".grp");
   patchBar(grps[0], prev.pv, next.pv, true);
+  grps[1].classList.toggle("off", next.hasPm === false);
   patchBar(grps[1], prev.pm, next.pm, false);
   if (prev.defesa !== next.defesa) {
     const val = grps[2].querySelector(".val");
@@ -306,6 +307,135 @@ function patchSlot(el, prev, next) {
 
 const snapshot = (s) => (s ? JSON.parse(JSON.stringify(s)) : null);
 
+/* ---------- Chat ---------- */
+const chatSeen = new Map(); // id -> { at: momento (local) em que a mensagem nasceu, el }
+let chatTimer = 0;
+
+function msgHtml(m) {
+  const body = m.roll
+    ? `<span class="rf">${esc(m.flavor || m.roll.formula)}</span><b class="rt">${m.roll.total}</b>`
+    : `<span class="tx">${esc(m.flavor && m.text ? m.flavor + " — " + m.text : m.flavor || m.text)}</span>`;
+  return `<span class="who">${esc(m.who)}</span> ${body}`;
+}
+
+function sweepChat(box, fade) {
+  const now = Date.now();
+  for (const [id, r] of chatSeen) {
+    if (fade > 0 && now - r.at > fade * 1000) {
+      if (!r.gone) {
+        r.gone = true;
+        r.el.classList.add("out");
+        setTimeout(() => r.el.remove(), 600);
+      }
+    }
+  }
+}
+
+/** Documento do iframe do chat "do jeito do Foundry": usa os CSS do próprio Foundry (isolado do resto do overlay). */
+function frameDoc(f) {
+  const css = f.cssText
+    ? `<style>${String(f.cssText).replace(/<\/style/gi, "<\\/style")}</style>`
+    : (f.css ?? []).map((h) => `<link rel="stylesheet" href="${esc(h)}">`).join("");
+  return `<!doctype html><html class="${esc(f.htmlClass ?? "")}"><head><meta charset="utf-8"><base href="${esc(f.base ?? "")}">${css}<style>
+html,body{background:transparent!important;margin:0;padding:0;overflow:hidden;height:100%;width:100%}
+body{display:flex;flex-direction:column;justify-content:flex-end}
+#chat{background:transparent!important;border:0!important;box-shadow:none!important;display:flex!important;flex-direction:column;justify-content:flex-end;height:100%;width:100%;padding:0!important;margin:0!important}
+#chat-log{background:transparent!important;overflow:hidden!important;display:flex!important;flex-direction:column;justify-content:flex-end;margin:0;padding:0;list-style:none;flex:none!important;height:auto!important;max-height:100%}
+.message-delete,.card-buttons,.message-controls,.chat-message .message-header .message-metadata .message-delete{display:none!important}
+.chat-message{flex:none;transition:opacity .5s,transform .5s}
+.chat-message.out{opacity:0;transform:translateX(-12px)}
+.chat-message.new{animation:t20in .4s ease-out both}
+@keyframes t20in{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
+</style></head><body class="${esc(f.bodyClass ?? "")}"><section id="chat" class="chat-sidebar directory flexcol"><ol id="chat-log" class="chat-log"></ol></section></body></html>`;
+}
+
+/** Desenha/atualiza a caixa de chat dentro do palco. chat = null/desligado remove. */
+function renderChat(stage, chat, screen, payloadTs) {
+  let box = stage.querySelector(".chat");
+  const dedicated = screen === "chat";
+  const on = chat && Array.isArray(chat.msgs) && (dedicated || ((chat.screens === "both" || !chat.screens || chat.screens === screen) && chat.screens !== "none"));
+  const g = dedicated && chat?.scr ? chat.scr : chat;
+  if (!on) {
+    box?.remove();
+    chatSeen.clear();
+    clearInterval(chatTimer);
+    return;
+  }
+  const framed = chat.style === "foundry" && !!chat.frame;
+  if (box && box.dataset.mode !== (framed ? "f" : "s")) {
+    box.remove();
+    box = null;
+  }
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "chat";
+    box.dataset.mode = framed ? "f" : "s";
+    stage.appendChild(box);
+    chatSeen.clear();
+  }
+  box.style.left = (Number(g.x) || 0) + "px";
+  box.style.top = (Number(g.y) || 0) + "px";
+  box.style.width = (Number(g.w) || 440) + "px";
+  box.style.fontSize = (Number(chat.fs) || 18) + "px";
+  box.style.height = framed ? (Number(g.h) || 420) + "px" : "";
+  const fade = Number(chat.fade) || 0;
+
+  let host = box;
+  let doc = document;
+  if (framed) {
+    let fr = box.querySelector("iframe");
+    const key = [chat.frame.base, chat.frame.htmlClass, chat.frame.bodyClass, (chat.frame.css || []).length, (chat.frame.cssText || "").length].join("|");
+    if (!fr || fr.dataset.k !== key) {
+      box.innerHTML = "";
+      chatSeen.clear();
+      fr = document.createElement("iframe");
+      fr.dataset.k = key;
+      fr.style.cssText = "width:100%;height:100%;border:0;background:transparent;display:block";
+      fr.setAttribute("allowtransparency", "true");
+      fr.onload = () => {
+        fr._ready = true;
+        fr._again?.();
+      };
+      box.appendChild(fr);
+      fr.srcdoc = frameDoc(chat.frame);
+    }
+    fr._again = () => renderChat(stage, chat, screen, payloadTs);
+    if (!fr._ready) return; // volta sozinho quando o iframe terminar de carregar
+    doc = fr.contentDocument;
+    host = doc?.getElementById("chat-log");
+    if (!host) return;
+  }
+
+  const now = Date.now();
+  const keep = new Set(chat.msgs.map((m) => m.id));
+  for (const [id, r] of chatSeen) if (!keep.has(id)) { r.el.remove(); chatSeen.delete(id); }
+  for (const m of chat.msgs) {
+    if (chatSeen.has(m.id)) continue;
+    const age = Math.max(0, (payloadTs || now) - (m.ts || payloadTs || now)); // idade no momento do envio
+    if (fade > 0 && age > fade * 1000) continue; // já velha demais: nem aparece
+    let el;
+    if (framed && m.html) {
+      const tpl = doc.createElement("template");
+      tpl.innerHTML = m.html;
+      el = tpl.content.firstElementChild;
+    }
+    if (!el) {
+      el = doc.createElement(framed ? "li" : "div");
+      el.className = (framed ? "chat-message message" : "msg") + (m.roll ? " isroll" : "");
+      el.innerHTML = msgHtml(m);
+    }
+    if (chatSeen.size || host.childElementCount) el.classList.add("new");
+    host.appendChild(el);
+    setTimeout(() => el.classList.remove("new"), 600);
+    chatSeen.set(m.id, { at: now - age, el });
+  }
+  // a ordem segue a do chat
+  for (const m of chat.msgs) { const r = chatSeen.get(m.id); if (r && !r.gone) host.appendChild(r.el); }
+  clearInterval(chatTimer);
+  if (fade > 0) chatTimer = setInterval(() => sweepChat(box, fade), 1000);
+  sweepChat(box, fade);
+}
+
 /** Cria o overlay (um palco 1920x1080 escalado para a janela). */
 export function createOverlay() {
   let root = null;
@@ -315,8 +445,24 @@ export function createOverlay() {
   let els = [];
   let prev = [];
 
+  let fillMode = false; // tela do chat como fonte própria: o chat ocupa a janela inteira, sem escala
   const fit = () => {
     if (!stage) return;
+    if (fillMode) {
+      stage.style.width = window.innerWidth + "px";
+      stage.style.height = window.innerHeight + "px";
+      stage.style.transform = "none";
+      const box = stage.querySelector(".chat");
+      if (box) {
+        box.style.left = "0px";
+        box.style.top = window.innerHeight + "px";
+        box.style.width = window.innerWidth + "px";
+        if (box.dataset.mode === "f") box.style.height = window.innerHeight + "px";
+      }
+      return;
+    }
+    stage.style.width = "1920px";
+    stage.style.height = "1080px";
     const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
     stage.style.transform = `scale(${s})`;
   };
@@ -347,6 +493,23 @@ export function createOverlay() {
         curScreen = curNames = null;
         els = [];
         prev = [];
+        renderChat(stage, null);
+        return;
+      }
+      fillMode = screen === "chat" && !!payload.fill;
+      if (screen === "chat") {
+        // tela só do chat: nenhum bloco de personagem
+        if (curScreen !== "chat") {
+          stage.className = "t20obs-stage chat-only";
+          stage.innerHTML = "";
+          els = [];
+          prev = [];
+          curScreen = "chat";
+          curNames = null;
+        }
+        applyFonts(stage, payload.layout);
+        renderChat(stage, payload.chat, "chat", payload.ts);
+        fit();
         return;
       }
       const showNames = !!payload.showNames;
@@ -384,6 +547,7 @@ export function createOverlay() {
         });
       }
       prev = slots.map(snapshot);
+      renderChat(stage, payload.chat, screen, payload.ts);
       fit();
     },
     hide() {

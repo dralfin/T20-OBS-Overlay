@@ -78,6 +78,7 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 
 /* ---------- Animações das barras ---------- */
 #t20-obs-overlay .grp { position: relative; }
+#t20-obs-overlay .grp.off { display: none; }
 #t20-obs-overlay .bar .ghost { position: absolute; inset: 0 auto 0 0; width: 0; }
 #t20-obs-overlay .bar .ghost.loss { background: linear-gradient(90deg, #ffd9b0, #fff3e0); }
 #t20-obs-overlay .pv .bar .ghost.gain { background: linear-gradient(90deg, #7fe88a, #c9ffcf); }
@@ -153,6 +154,21 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 #t20-obs-overlay .tag.new { animation: t20-in 0.4s ease-out both; }
 #t20-obs-overlay .tela2 .tag, #t20-obs-overlay.tela2 .tag { font-size: 11px; padding: 0 5px; }
 
+/* ---------- Chat ---------- */
+#t20-obs-overlay .chat { position: absolute; transform: translateY(-100%); display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; }
+#t20-obs-overlay .msg {
+  padding: 3px 9px; border-radius: 5px; line-height: 1.25; overflow-wrap: anywhere;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.45)); border-left: 3px solid #a50f0f;
+  transition: opacity 0.5s, transform 0.5s;
+}
+#t20-obs-overlay .msg.new { animation: t20-msgin 0.4s ease-out both; }
+#t20-obs-overlay .msg.out { opacity: 0; transform: translateX(-12px); }
+#t20-obs-overlay .msg .who { font-weight: 800; color: var(--gold); margin-right: 4px; }
+#t20-obs-overlay .msg .rf { opacity: 0.85; margin-right: 6px; }
+#t20-obs-overlay .msg .rt { color: #ffe27a; font-size: 1.2em; }
+#t20-obs-overlay .msg.isroll { border-left-color: #e9c987; }
+@keyframes t20-msgin { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+
 /* ---------- Nome (opcional) ---------- */
 #t20-obs-overlay .nm {
   margin-top: 5px;
@@ -192,6 +208,13 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 .t20obs-cfg-main { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .t20obs-cfg-footer { display: flex; gap: 8px; justify-content: space-between; margin-top: 6px; }
 .t20obs-cfg-footer button { flex: 1; }
+
+/* ---------- Janela: cópia do chat ---------- */
+.t20obs-chatcopy .window-content { padding: 0; overflow-y: auto; scrollbar-width: none; }
+.t20obs-chatcopy .window-content::-webkit-scrollbar { display: none; }
+.t20obs-chatcopy #chat { height: auto; flex: none; }
+.t20obs-chatcopy .chat-log { overflow: visible; margin: 0; padding: 6px; list-style: none; }
+.t20obs-chatcopy .message-delete, .t20obs-chatcopy .card-buttons { display: none; }
 
 /* ---------- Janela de posição e largura (GM) ---------- */
 .t20obs-lay-h { margin: 10px 0 0; padding-bottom: 3px; font-size: 13px; border-bottom: 1px solid rgba(128, 128, 128, 0.4); }

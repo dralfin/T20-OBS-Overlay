@@ -58,6 +58,32 @@ Ainda existe a opção de abrir o próprio Foundry dentro do OBS (`http://SEU-FO
 - Tudo é salvo sozinho e **aparece ao vivo no OBS** enquanto você arrasta. Os ajustes ficam salvos no mundo.
 - *Restaurar padrão desta tela* volta blocos e elementos da tela aos valores originais (as fontes não mudam; para voltar ao padrão, remova o arquivo com o ✕ e apague o nome).
 
+## Chat no OBS
+
+*Configurações → Configurar Módulos → T20 OBS Overlay*, opções **Chat no OBS**:
+
+- **mostrar**: liga o chat no overlay (desligado por padrão). Aparecem as mensagens **públicas** do chat do Foundry: falas e rolagens (nome de quem falou/rolou, descrição e total). **Sussurros e rolagens cegas nunca são enviados.**
+- **aparência**: *Do jeito do Foundry* (padrão) ou *Simples*. No modo Foundry, cada mensagem é renderizada pelo próprio Foundry (cartas de ataque/magia, rolagens com fórmula e dados, imagens) e o overlay as mostra dentro de uma caixa isolada que carrega o **visual (CSS) do próprio Foundry**, como um recorte do chat. O **CSS inteiro do Foundry** (incluindo o do sistema e dos módulos) é enviado ao OBS junto, uma vez ao conectar e a cada 30 s, e a página o guarda; assim o chat não depende de o OBS baixar os estilos. Imagens e fontes do chat ainda vêm do endereço do Foundry, então o OBS precisa conseguir abri-lo (sem login). Se o chat sair sem estilo, atualize o Foundry (F5) para reenviar o CSS e "Atualizar cache" no OBS. A altura da caixa tem opção própria; o texto cresce de baixo para cima.
+- **Tela do Chat** (cena própria só com o chat): preencha **Cena(s) do OBS da Tela do Chat** (ex.: `Chat`) e crie essa cena no OBS com a mesma fonte de navegador. Nela aparece só o chat, sem os personagens, com posição/tamanho próprios (**Tela do Chat: posição X, Y, largura, altura**). Se não quiser o chat nas Telas 1 e 2, escolha *Nenhuma delas* em **em quais telas**. `?tela=chat` força essa tela.
+- **Chat como fonte separada (para usar nas Telas 1 e 2 e posicionar livremente no OBS):** adicione uma **segunda Fonte de Navegador** com a mesma página e `?tela=chat` no fim da URL (ou do nome do arquivo). Nesse modo o chat **ocupa a fonte inteira**, sem escala: o tamanho da fonte de navegador no OBS é o tamanho da caixa de chat, e você a move/redimensiona direto no OBS, em quantas cenas quiser. Ela aparece sempre que a fonte estiver visível (não depende do nome da cena). Para não duplicar, deixe a fonte principal sem chat: em **em quais telas**, escolha *Nenhuma delas*.
+- **só rolagens de dados**: oculta as conversas e mostra apenas rolagens.
+- **em quais telas**: Tela 1, Tela 2 ou as duas.
+- **quantas mensagens** (1 a 15), **some após (segundos)** (0 = não some), **posição X / Y** (Y é a borda de baixo da caixa; tela de 1920×1080), **largura** e **tamanho da fonte**.
+- As mensagens novas entram com uma animação curta e somem sozinhas depois do tempo escolhido. Ao abrir o OBS no meio da sessão, só aparecem as mensagens mais recentes (dentro do tempo).
+- Cartas de ataque/magia do sistema entram como texto simples (cortado em 200 caracteres).
+- Teste sem o Foundry: `?teste=1&chat=1`.
+
+## Chat em janela (cópia do seu chat)
+
+Qualquer usuário (não só o mestre) pode abrir uma **janela com uma cópia do próprio chat**, só com o que ele pode ver (inclui sussurros destinados a ele), com o visual do Foundry, atualizando ao vivo e rolando até a última mensagem:
+
+- *Configurações → Configurar Módulos → T20 OBS Overlay → **Abrir cópia do chat***, ou
+- atalho **Ctrl+Shift+C** (editável em *Configurar Controles*).
+- Abre como **janela separada do navegador** (fora do Foundry), que você pode mover para outro monitor e redimensionar à vontade; ela fecha junto com o Foundry. Se o navegador bloquear pop-ups, permita para o site do Foundry (nesse caso o módulo abre a cópia dentro do Foundry, como plano B). Para usar no OBS, adicione uma *Captura de Janela* dessa janela. Para a versão que não precisa de captura, use o **Chat no OBS** acima.
+- **Abrir sozinha para um jogador:** em *Configurar personagens*, o mestre escolhe **Abrir a janela do chat automaticamente para** um usuário. Quando ele entrar (ou quando o mestre salvar a escolha com ele já online), a janela tenta abrir sozinha. Navegadores só permitem pop-up após um clique, então, se bloquear, aparece o aviso "clique em qualquer lugar" e a janela abre no primeiro clique/tecla do jogador. Para abrir sem clique, o jogador permite pop-ups para o site do Foundry (ícone de pop-up bloqueado na barra de endereço → *Sempre permitir*).
+- **Rolagem:** a barra de rolagem fica invisível (a roda do mouse e o toque continuam rolando). Quando chega uma mensagem nova, a janela pula para o fim; se a mensagem for maior que a janela, ela começa no topo da mensagem e desce devagar (cerca de 90 px por segundo) até o fim. Se você rolar na mão, a descida lenta para.
+- Opção **Chat em janela: quantas mensagens** (padrão 60). Os botões das cartas e a expansão dos dados não funcionam na cópia (é só leitura).
+
 ## Animações
 
 As barras animam sozinhas quando o valor muda:
@@ -91,6 +117,12 @@ Animações só rodam com a cena visível: uma mudança de PV que ocorre enquant
 
 Por padrão o nome usa a fonte **Pirata One** (Google Fonts); sem internet cai numa serifada. Com um arquivo de fonte no menu, não depende de internet.
 
-## Dados lidos
+## Sistemas suportados
+
+- **Tormenta20**: PV, PM e Defesa, como descrito abaixo.
+- **D&D 5e** (`dnd5e`): **PV** = pontos de vida (já com PV máximo efetivo e temporários), **Mana** = **espaços de magia** (soma de todos os níveis mais os de pacto; a barra mostra restantes/totais), **Defesa** = **CA**. Personagens sem espaços de magia (guerreiro, bárbaro...) ficam sem a barra azul, e as outras barras ocupam o espaço. Condições (Cego, Envenenado...) aparecem como etiquetas, com o nome que o sistema usa.
+- **Outros sistemas:** o módulo tenta os nomes comuns (`attributes.hp`/`pv`, `mp`/`pm`, `ac`/`defesa`); sem mana, a barra azul some. Se os valores vierem zerados, ajuste `readStats` em `scripts/common.js`.
+
+## Dados lidos (Tormenta20)
 
 `system.attributes.pv`, `system.attributes.pm` (valor, máximo, temporário) e `system.attributes.defesa.value`. Se a sua versão do sistema usar outros caminhos, ajuste `readStats` em `scripts/common.js` (veja os valores com `game.actors.getName("Nome").system.attributes` no console, F12).
