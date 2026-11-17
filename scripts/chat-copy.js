@@ -3,6 +3,31 @@ import { MODULE_ID } from "./common.js";
 const { ApplicationV2 } = foundry.applications.api;
 const htmlCache = new Map(); // id -> html renderizado pelo Foundry
 
+const escA = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+const dropCls = /^(hidden|collapsed|inactive|minimized|popout)$/;
+const cleanCls = (c) => String(c ?? "").split(/\s+/).filter((x) => x && !dropCls.test(x)).join(" ");
+
+/** Reproduz a "casca" do chat original (mesmos ids e classes dos elementos ao redor, onde o Foundry define tema, cores e fontes).
+ *  Os elementos de fora ficam sem layout próprio (all:unset), mas mantêm as variáveis de tema herdadas. */
+function chatShell() {
+  const chat = ui.chat?.element ?? document.getElementById("chat");
+  const chain = [];
+  let el = chat?.parentElement;
+  while (el && el !== document.body && el !== document.documentElement) {
+    chain.unshift(el);
+    el = el.parentElement;
+  }
+  const open = chain.map((e) => `<${e.localName}${e.id ? ` id="${escA(e.id)}"` : ""} class="${escA(cleanCls(e.className))}" style="all:unset!important;display:block!important">`).join("");
+  const close = [...chain].reverse().map((e) => `</${e.localName}>`).join("");
+  const log = chat?.querySelector?.("#chat-log, .chat-log");
+  return {
+    open,
+    close,
+    chatCls: cleanCls(chat?.className) || "chat-sidebar directory flexcol",
+    logCls: cleanCls(log?.className) || "chat-log"
+  };
+}
+
 /** HTML do chat do usuário atual (só mensagens visíveis para ele), renderizado pelo próprio Foundry. */
 async function buildChatHtml(remember = false) {
   const n = Math.max(5, Math.min(300, game.settings.get(MODULE_ID, "chatCopyLines") || 60));
@@ -23,7 +48,8 @@ async function buildChatHtml(remember = false) {
   }
   for (const id of htmlCache.keys()) if (!game.messages.has(id)) htmlCache.delete(id);
   if (remember) lastSig = msgs.map(sigOf).join("|");
-  return `<section id="chat" class="chat-sidebar directory flexcol"><ol id="chat-log" class="chat-log">${parts.join("")}</ol></section>`;
+  const s = chatShell();
+  return `${s.open}<section id="chat" class="${escA(s.chatCls)}"><ol id="chat-log" class="${escA(s.logCls)}">${parts.join("")}</ol></section>${s.close}`;
 }
 
 /* ---------- Janela própria do navegador (fora do Foundry) ---------- */
@@ -71,10 +97,11 @@ let slowScroll = 0;
 
 /** Rola devagar até o fim (usado em mensagens maiores que a janela). */
 function glideToBottom(win) {
-  const sc = win.document.scrollingElement;
+  const sc = win.document.getElementById("t20-chat-root");
+  if (!sc) return;
   cancelAnimationFrame(slowScroll);
   const from = sc.scrollTop;
-  const dist = sc.scrollHeight - win.innerHeight - from;
+  const dist = sc.scrollHeight - sc.clientHeight - from;
   if (dist <= 0) return;
   const ms = Math.min(25000, Math.max(1500, (dist / 90) * 1000)); // ~90 px por segundo
   const t0 = performance.now();
@@ -83,7 +110,7 @@ function glideToBottom(win) {
     if (win.closed) return;
     if (Math.abs(sc.scrollTop - last) > 3) return; // o usuário mexeu na rolagem: para
     const k = Math.min(1, (now - t0) / ms);
-    last = from + (sc.scrollHeight - win.innerHeight - from) * k;
+    last = from + (sc.scrollHeight - sc.clientHeight - from) * k;
     sc.scrollTop = last;
     if (k < 1) slowScroll = requestAnimationFrame(step);
   };
@@ -95,7 +122,7 @@ async function doPaint() {
   const root = doc.getElementById("t20-chat-root");
   if (!root) return;
   const html = await buildChatHtml(true);
-  const sc = doc.scrollingElement;
+  const sc = root; // o próprio #t20-chat-root rola (não depende do CSS da página do Foundry)
   const first = !root.dataset.t20;
   const had = new Set([...root.querySelectorAll("[data-message-id]")].map((e) => e.dataset.messageId));
   const keep = sc.scrollTop;
@@ -107,9 +134,9 @@ async function doPaint() {
   } else if (fresh.length) {
     cancelAnimationFrame(slowScroll);
     const el = fresh[fresh.length - 1];
-    if (el.offsetHeight > popup.innerHeight * 0.85) {
+    if (el.offsetHeight > sc.clientHeight * 0.85) {
       // mensagem grande: começa no topo dela e desce devagar até o fim
-      sc.scrollTop = el.offsetTop - 8;
+      sc.scrollTop = el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8;
       glideToBottom(popup);
     } else {
       sc.scrollTop = sc.scrollHeight; // mensagem normal: pula para o fim
@@ -119,14 +146,30 @@ async function doPaint() {
   }
 }
 
+/** Largura (px) do chat do próprio Foundry, para a janela ficar igual. */
+function foundryChatWidth() {
+  const cand = [ui.chat?.element, document.getElementById("chat"), document.getElementById("sidebar-content"), document.getElementById("sidebar")];
+  for (const el of cand) {
+    const w = el?.getBoundingClientRect?.().width;
+    if (w > 100) return Math.round(w);
+  }
+  const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sidebar-width"));
+  return v > 100 ? Math.round(v) : 340;
+}
+
 function openPopup() {
   if (popup && !popup.closed) {
     popup.focus();
     paintPopup();
     return popup;
   }
-  const w = window.open("", "t20obs-chat", "popup=yes,width=480,height=760");
+  const cw = foundryChatWidth();
+  const w = window.open("", "t20obs-chat", `popup=yes,width=${cw},height=760`);
   if (!w) return null;
+  try {
+    // alguns navegadores contam a borda da janela na largura: corrige para o conteúdo ficar exatamente do tamanho do chat
+    if (Math.abs(w.innerWidth - cw) > 2) w.resizeTo(w.outerWidth + (cw - w.innerWidth), w.outerHeight);
+  } catch (err) { /* ignora */ }
   const doc = w.document;
   doc.open();
   doc.write(`<!doctype html><html class="${document.documentElement.className.replace(/\bt20-obs-on\b/g, "")}"><head><meta charset="utf-8"><title>Chat — ${game.world?.title ?? "Foundry"}</title><base href="${new URL(foundry.utils.getRoute("/"), window.location.origin).href}"></head><body class="${document.body.className.replace(/\bt20-obs-on\b/g, "")}"><div id="t20-chat-root"></div></body></html>`);
@@ -137,10 +180,11 @@ function openPopup() {
     doc.head.appendChild(node.cloneNode(true));
   }
   const extra = doc.createElement("style");
-  extra.textContent = `html,body{height:auto!important;min-height:100%;overflow:auto!important;margin:0;scrollbar-width:none;-ms-overflow-style:none}
-html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0}
-#t20-chat-root #chat{height:auto;flex:none;position:static;width:auto}
-#t20-chat-root .chat-log{overflow:visible;margin:0;padding:6px;list-style:none}
+  extra.textContent = `html,body{height:100%!important;margin:0!important;padding:0!important;overflow:hidden!important;background:transparent}
+#t20-chat-root{position:fixed!important;inset:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:none;-ms-overflow-style:none;display:block!important}
+#t20-chat-root::-webkit-scrollbar{display:none;width:0;height:0}
+#t20-chat-root #chat{position:static!important;display:block!important;height:auto!important;max-height:none!important;width:auto!important;flex:none!important;overflow:visible!important}
+#t20-chat-root #chat-log,#t20-chat-root .chat-log{position:static!important;display:block!important;height:auto!important;max-height:none!important;overflow:visible!important;flex:none!important;margin:0!important;padding:6px!important;list-style:none}
 .message-delete,.card-buttons{display:none!important}`;
   doc.head.appendChild(extra);
   popup = w;

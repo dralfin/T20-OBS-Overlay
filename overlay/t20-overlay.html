@@ -216,8 +216,8 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 /* ---------- Janela: cópia do chat ---------- */
 .t20obs-chatcopy .window-content { padding: 0; overflow-y: auto; scrollbar-width: none; }
 .t20obs-chatcopy .window-content::-webkit-scrollbar { display: none; }
-.t20obs-chatcopy #chat { height: auto; flex: none; }
-.t20obs-chatcopy .chat-log { overflow: visible; margin: 0; padding: 6px; list-style: none; }
+.t20obs-chatcopy #chat { height: auto !important; flex: none !important; display: block !important; }
+.t20obs-chatcopy #chat-log, .t20obs-chatcopy .chat-log { overflow: visible !important; height: auto !important; max-height: none !important; flex: none !important; display: block !important; margin: 0; padding: 6px; list-style: none; }
 .t20obs-chatcopy .message-delete, .t20obs-chatcopy .card-buttons { display: none; }
 
 /* ---------- Janela de posição e largura (GM) ---------- */
@@ -261,7 +261,7 @@ body.t20-obs-on > *:not(#t20-obs-overlay):not(script):not(style):not(link) {
 .t20obs-lay-field input[type="number"] { width: 54px; padding: 0 2px; }
 
 </style></head><body>
-<script>window.T20OBS_VERSION = "3.17.0";</script>
+<script>window.T20OBS_VERSION = "1.0.9";</script>
 <script>
 /* Renderização do overlay. Não depende do Foundry: recebe um "payload" simples
    ({ slots, showNames, scenes, scene }) e desenha. É usado tanto dentro do Foundry
