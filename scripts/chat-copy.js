@@ -36,8 +36,14 @@ async function buildChatHtml(remember = false) {
   for (const m of msgs) {
     if (!htmlCache.has(m.id)) {
       try {
-        const el = await m.renderHTML({ canDelete: false, canClose: false });
-        const node = el instanceof HTMLElement ? el : el?.[0];
+        // Preferência: a mensagem já desenhada no chat real (traz cores do jogador e tudo que módulos aplicaram depois);
+        // se não estiver lá (mensagem antiga), o Foundry a renderiza.
+        const live = ui.chat?.element?.querySelector?.(`[data-message-id="${m.id}"]`);
+        let node = live ? live.cloneNode(true) : null;
+        if (!node) {
+          const el = await m.renderHTML({ canDelete: false, canClose: false });
+          node = el instanceof HTMLElement ? el : el?.[0];
+        }
         node?.querySelectorAll(".message-delete").forEach((x) => x.remove());
         if (node) htmlCache.set(m.id, node.outerHTML);
       } catch (err) {
@@ -103,7 +109,8 @@ function glideToBottom(win) {
   const from = sc.scrollTop;
   const dist = sc.scrollHeight - sc.clientHeight - from;
   if (dist <= 0) return;
-  const ms = Math.min(25000, Math.max(1500, (dist / 90) * 1000)); // ~90 px por segundo
+  const speed = Math.max(5, Math.min(300, Number(game.settings.get(MODULE_ID, "chatCopySpeed")) || 30)); // px por segundo
+  const ms = Math.min(180000, Math.max(3000, (dist / speed) * 1000));
   const t0 = performance.now();
   let last = from;
   const step = (now) => {
@@ -177,7 +184,23 @@ function openPopup() {
   // mesmos estilos do Foundry (os endereços são resolvidos pela tag <base> acima)
   for (const node of document.head.querySelectorAll('link[rel="stylesheet"], style')) {
     if (node.href?.includes(MODULE_ID)) continue;
+    if (node.localName === "style" && node.sheet) {
+      // regras inseridas por script (ex.: cores dos jogadores) não estão no texto do <style>: copia as regras vivas
+      try {
+        const s = doc.createElement("style");
+        s.textContent = [...node.sheet.cssRules].map((r) => r.cssText).join("\n");
+        doc.head.appendChild(s);
+        continue;
+      } catch (err) { /* cai no clone */ }
+    }
     doc.head.appendChild(node.cloneNode(true));
+  }
+  for (const sheet of document.adoptedStyleSheets ?? []) {
+    try {
+      const s = doc.createElement("style");
+      s.textContent = [...sheet.cssRules].map((r) => r.cssText).join("\n");
+      doc.head.appendChild(s);
+    } catch (err) { /* ignora */ }
   }
   const extra = doc.createElement("style");
   extra.textContent = `html,body{height:100%!important;margin:0!important;padding:0!important;overflow:hidden!important;background:transparent}
@@ -215,6 +238,7 @@ export class ChatCopy extends ApplicationV2 {
     if (invalidateId) htmlCache.delete(invalidateId);
     clearTimeout(popTimer);
     popTimer = setTimeout(paintPopup, 120);
+    if (invalidateId) setTimeout(() => { htmlCache.delete(invalidateId); paintPopup(); }, 700); // o chat real termina de redesenhar depois
     const app = foundry.applications.instances?.get(ChatCopy.DEFAULT_OPTIONS.id);
     if (!app?.rendered) return;
     clearTimeout(ChatCopy.#timer);

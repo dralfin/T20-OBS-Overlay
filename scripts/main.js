@@ -308,6 +308,15 @@ Hooks.once("init", () => {
     onChange: () => autoOpenChat()
   });
 
+  game.settings.register(MODULE_ID, "chatCopySpeed", {
+    name: "Chat em janela: velocidade da rolagem automática",
+    hint: "Em pixels por segundo, para mensagens maiores que a janela (5 a 300; menor = mais devagar). Padrão: 30.",
+    scope: "client",
+    config: true,
+    type: Number,
+    default: 30
+  });
+
   game.settings.register(MODULE_ID, "chatCopyLines", {
     name: "Chat em janela: quantas mensagens",
     hint: "Quantas mensagens recentes a janela de cópia do chat mostra (5 a 300). Vale só para este navegador.",
